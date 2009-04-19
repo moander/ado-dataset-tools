@@ -5,6 +5,7 @@ Attribute VB_Name = "SharedRecordSet"
 
 Option Explicit
 
+Public Const VARCHAR_SIZE = 1200 ' This one is important. I use 1200 since Ellipse COM components can create data up to this size (MSO010 extended text)
 
 Public Const ADT_ACTION_SUM As String = "sum"
 Public Const ADT_ACTION_MAX As String = "max"
@@ -14,8 +15,33 @@ Public Const ADT_ACTION_JOIN_COMMA As String = "joinc"
 Public Const ADT_ACTION_JOIN_HASH As String = "joinh"
 Public Const ADT_ACTION_JOIN_CRLF As String = "joinh"
 
-Public Const VARCHAR_SIZE = 1200
 
+
+
+Enum SortRecordSetOptionsEnum
+    TEXT_AS_NUMERIC = 1
+End Enum
+
+Enum GroupRecordSetOptionsEnum
+    SORT_BY_GC = 1
+    NULLS_TO_ZERO = 2
+    ZEROS_TO_NULL = 4
+End Enum
+
+
+Enum SubTotalRecordSetOptionsEnum
+    ST_SORT_BY_GC = 1
+    ST_NULLS_TO_ZERO = 2
+    ST_ZEROS_TO_NULL = 4
+
+    GRAND_TOTAL = 8
+
+    'ADD_TOTAL_COLUMN = 64
+    BLANK_AFTER = 128
+    NO_SINGLE_TOTALS = 256
+    TOTAL_TEXT_INCLUDE_DATA = 512
+
+End Enum
 
 
 
