@@ -3,6 +3,8 @@ Attribute VB_Name = "SharedRecordSet"
 ' It is available for use via the LGPL license.
 
 
+' Requires reference to "Microsoft ActiveX Data Object Library 2.7" or above
+
 Option Explicit
 
 Public Const VARCHAR_SIZE = 1200 ' This one is important. I use 1200 since Ellipse COM components can create data up to this size (MSO010 extended text)
@@ -125,17 +127,22 @@ End Function
 
 
 Function CloneEmptyRecordset(r As ADODB.Recordset) As ADODB.Recordset
-  Dim n As ADODB.Recordset
+  ' This should be merged into CopyRecordsetStructure()
+
+  ' This is just a cheap and nasty way of cloning a recordset then deleting everything in it
+  ' i would assume s.Delete adAffectGroup would improve this but probably should build a better
+  ' CloneRecordset()
   
+  ' Currently CloneRecordsetStructure() is a better way of doing this.
+  
+  Dim n As ADODB.Recordset
   
   If r Is Nothing Then
     Set CloneEmptyRecordset = Nothing
     Exit Function
   End If
 
-  ' This is just a cheap and nasty way of cloning a recordset then deleting everything in it
-  ' i would assume s.Delete adAffectGroup would improve this but probably should build a better
-  ' CloneRecordset()
+
     
   Set n = CloneRecordset(r.Clone)
   ' i though i could use
@@ -145,18 +152,17 @@ Function CloneEmptyRecordset(r As ADODB.Recordset) As ADODB.Recordset
   'MsgBox "BEFORE " & n.RecordCount
   Do Until n.EOF Or n.RecordCount = 0
     n.MoveFirst
-    'MsgBox "Delete and " & n.RecordCount & " to go"
     n.Delete
   Loop
   
   n.UpdateBatch
-  'MsgBox "AFTER " & n.RecordCount
   
   Set CloneEmptyRecordset = n
 End Function
 
 
 Function CloneRecordsetStructure(r As ADODB.Recordset, Optional OpenOnCreate As Boolean = True) As ADODB.Recordset
+  ' This should be merged into CopyRecordsetStructure()
     Dim fld As ADODB.Field
     Dim oRsCloned As ADODB.Recordset
     
@@ -186,6 +192,7 @@ Function CloneRecordsetStructure(r As ADODB.Recordset, Optional OpenOnCreate As 
 End Function
 
 Function CloneRecordsetStructureAsVariant(r As ADODB.Recordset, Optional OpenOnCreate As Boolean = True) As ADODB.Recordset
+  ' This should be merged into CopyRecordsetStructure()
     Dim fld As ADODB.Field
     Dim t As ADODB.Recordset
     
@@ -208,6 +215,7 @@ Function CloneRecordsetStructureAsVariant(r As ADODB.Recordset, Optional OpenOnC
 End Function
 
 Function CloneRecordsetStructureAsVarChar(r As ADODB.Recordset, Optional OpenOnCreate As Boolean = True) As ADODB.Recordset
+  ' This should be merged into CopyRecordsetStructure()
     Dim fld As ADODB.Field
     Dim t As ADODB.Recordset
     
@@ -228,68 +236,114 @@ Function CloneRecordsetStructureAsVarChar(r As ADODB.Recordset, Optional OpenOnC
     'clean up
     Set fld = Nothing
 End Function
-
-Function CloneRecordset(ByVal oRs As ADODB.Recordset, _
-  Optional ByVal LockType As ADODB.LockTypeEnum = -1) As ADODB.Recordset
-  'Optional ByVal LockType As ADODB.LockTypeEnum = adLockUnspecified) As ADODB.Recordset
-
-  ' according to http://www.vbrad.com/article.aspx?id=12
- 
- 
+Function CloneRecordset(ByVal rs As ADODB.Recordset, Optional ByVal LockType As ADODB.LockTypeEnum = -1) As ADODB.Recordset
+  ' See  http://www.vbrad.com/article.aspx?id=12 for a discussion on memory leaks with ADODB.Stream
+  
+  ' Also from http://www.vbrad.com/article.aspx?id=12
   ' Contrary to popular belief, Recordset.Clone doesn't actually clone the recordset.
   ' It doesn't actually create a new object in memory - it simply returns a reference
   ' to the original recordset with the option of making the reference read-only.
   ' To verify this claim, simply delete a record from the cloned recordset and
   ' you will see that the .RecordCount on the original recordset also decreases.
+
   
-  ' So how do you actually make a true clone of the recordset with no dependencies
-  ' or dangling references? One way is to save the recordset to file via the .Save
-  ' method and then read it into another recordset. However, this method is very
-  ' costly and time-consuming because ADO has to write the entire recordset structure,
-  ' including field types and every property and every piece of data to disk.
-  ' The proper answer is in the rarely used ADODB.Stream object.
-  ' It turns out that you can save the entire recordset to this object
-  ' (which is in memory) and then restore to another recordset.
-  ' Check out the code below.
+  Dim stm As ADODB.Stream
+  Dim cln As ADODB.Recordset
+  Dim f As Field
+  Dim adVariantFlag As Boolean
   
-  ' Note that ADO contains a bug which shows up when using this method.
-  ' When opening a recordset from a Stream object, the recordset retains
-  ' all of the memory allocated to the Stream object, in addition to
-  ' allocating its own. Subsequently setting the Stream object to
-  ' Nothing does nothing. However, when a Recordset object is
-  ' deallocated, all the memory, including that of the dead
-  ' Stream object is deallocated as well.
-  ' So, not a horrible bug, but something to keep in mind when
-  ' you have multiple users accessing your cloning code
-  ' on the web server.
-  ' I've talked to the developer inside Microsoft on the
-  ' ADO team who thought that this was not a bug, but rather '
-  ' a design decision. Let me explain: Recordset assumes that
-  ' since it was created from the IStream interface, it may be asked
-  ' in the future to stream it elsewhere using this interface.
-  ' Thus rather than having to recreate this interface, it simply streams
-  ' the IStream memory chunk it has been created by. I think,
-  ' this behavior is a bug and if it indeed was a design decision,
-  ' then it was a bad design decision.
+  adVariantFlag = False
   
-  ' For example, if you want to clone a really large recordset
-  ' which normally takes 110 MB of RAM (11000 rows and 650 columns),
-  ' you will end up "leaking" 50 MB. Your total consumption of RAM
-  ' will be 270 MB (110 MB for the original RS, 110 MB for the
-  ' cloned RS and 50 MB that was absorbed from the Stream object).
+  If rs Is Nothing Then
+    Set CloneRecordset = cln
+    Exit Function
+  End If
+  
+  
+  
+  If rs.Fields.Count < 1 Then
+    Set CloneRecordset = cln
+    Exit Function
+  End If
+  
+  
+  For Each f In rs.Fields
+    If f.Type = adVariant Then
+      adVariantFlag = True
+    End If
+  Next
+  
+  
+  
+  If adVariantFlag = False Then
+    'save the recordset to the stream object
+    Set stm = New ADODB.Stream
+    rs.Save stm
+    'and now open the stream object into a new recordset
+    Set cln = New ADODB.Recordset
+    cln.Open stm, , , LockType
+  Else
+    ' streams dont support adVariant.
+    ' You could convert it all to text by
+    ' rs.Save stm, adPersistXML
+    ' but then why not just use adVarChar?
+    Set cln = CopyRecordsetStructure(rs)
+    Dim flds As Fields
+    
+    rs.MoveFirst
+    Do Until rs.EOF
+    
+      ' cln.AddNew fldNames, fldValues
+      cln.AddNew
+      For Each f In rs.Fields
+        cln.Fields(f.name) = f.Value
+      Next
+      
+      rs.MoveNext
+    Loop
+  End If
+  
+  'return the cloned recordset
+  Set CloneRecordset = cln
+  
+  'release the reference
+  Set cln = Nothing
+  Set stm = Nothing
+ 
+End Function
 
 
+Function CopyRecordsetStructure(r As ADODB.Recordset, Optional OpenOnCreate As Boolean = True) As ADODB.Recordset
+    Dim fld As ADODB.Field
+    Dim cpy As ADODB.Recordset
+    
+    Set cpy = New ADODB.Recordset
+    
+    For Each fld In r.Fields
+        cpy.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
+        
+        'special handling for data types with numeric scale & precision
+        Select Case fld.Type
+            Case adNumeric, adDecimal
+                cpy.Fields(cpy.Fields.Count - 1).Precision = fld.Precision
+                cpy.Fields(cpy.Fields.Count - 1).NumericScale = fld.NumericScale
+        End Select
+    Next
+    
+    'make the cloned recordset ready for business
+    If OpenOnCreate = True Then
+      cpy.Open
+    End If
+    
+    'return the new recordset
+    Set CopyRecordsetStructure = cpy
+    
+    'clean up
+    Set fld = Nothing
+End Function
 
-  ' HOWEVER (Need to test this :)
-  ' Clone Method Remarks
-  ' Use the Clone method to create multiple, duplicate Recordset objects, particularly if you want to be able to maintain more than one current record in a given set of records. Using the Clone method is more efficient than creating and opening a new Recordset object with the same definition as the original.
-  ' The current record of a newly created clone is set to the first record.
-  ' Changes you make to one Recordset object are visible in all of its clones regardless of cursor type. However, once you execute the ADO Recordset Object Requery Method on the original Recordset, the clones will no longer be synchronized to the original.
-  ' Closing the original recordset does not close its copies; closing a copy does not close the original or any of the other copies.
-  ' You can only clone a Recordset object that supports bookmarks. Bookmark values are interchangeable; that is, a bookmark reference from one Recordset object refers to the same record in any of its clones.
-
-
-
+Function CloneRecordset_OLD(ByVal oRs As ADODB.Recordset, _
+  Optional ByVal LockType As ADODB.LockTypeEnum = -1) As ADODB.Recordset
 
   Dim oStream As ADODB.Stream
   Dim oRsClone As ADODB.Recordset
@@ -380,7 +434,7 @@ Function CreateVarCharRecordsetFromString(strFields As String, Optional OpenOnCr
 End Function
 
 
-Function PivotRecordSet(r As ADODB.Recordset, groupColumns As Variant, pivotColumns As Variant, valueColumn As String, Optional action As String, Optional ByVal options As GroupRecordSetOptionsEnum = 0) As ADODB.Recordset
+Function PivotRecordSet(ByRef r As ADODB.Recordset, groupColumns As Variant, pivotColumns As Variant, valueColumn As String, Optional action As String, Optional ByVal options As GroupRecordSetOptionsEnum = 0) As ADODB.Recordset
   StatusChange "PivotRecordSet() starting"
   ' Set rt = PivotRecordSet(r, Split("ResourceGroup,ResourceID,ResourceName,ResourceType,DailyRate", ","), "ReportedWeekEnding", "DaysWorked", "sum")
   ' The order of columns seem to depend on the original order and
@@ -389,6 +443,8 @@ Function PivotRecordSet(r As ADODB.Recordset, groupColumns As Variant, pivotColu
   
   Dim t As ADODB.Recordset
   Dim x As ADODB.Recordset
+  Dim h As New HashTable
+  
   
   Dim gc() As String
   Dim gc2() As String
@@ -403,6 +459,7 @@ Function PivotRecordSet(r As ADODB.Recordset, groupColumns As Variant, pivotColu
   Dim i, l, u As Long
   Dim c As Variant
   Dim strName As String
+  Dim strFilter As String
   Dim prvCol As String
   Dim fld As Variant
   
@@ -430,19 +487,32 @@ Function PivotRecordSet(r As ADODB.Recordset, groupColumns As Variant, pivotColu
   
   For Each fld In t.Fields
     If InArray(pc, fld.name) = False And fld.name <> valueColumn Then
-      x.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
+      'x.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
       
       'special handling for data types with numeric scale & precision
+      'Select Case fld.Type
+      '    Case adNumeric, adDecimal
+      '        x.Fields(x.Fields.Count - 1).Precision = fld.Precision
+      '        x.Fields(x.Fields.Count - 1).NumericScale = fld.NumericScale
+      'End Select
       Select Case fld.Type
-          Case adNumeric, adDecimal
-              x.Fields(x.Fields.Count - 1).Precision = fld.Precision
-              x.Fields(x.Fields.Count - 1).NumericScale = fld.NumericScale
+      Case adVariant
+        x.Fields.Append fld.name, fld.Type
+      Case adNumeric, adDecimal
+        x.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
+        x.Fields(x.Fields.Count - 1).Precision = fld.Precision
+        x.Fields(x.Fields.Count - 1).NumericScale = fld.NumericScale
+      Case Else
+        x.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
       End Select
+      
+      
     End If
   Next
 
   
-  
+
+
   
   
   valType = t.Fields(pc(0)).Type
@@ -455,7 +525,7 @@ Function PivotRecordSet(r As ADODB.Recordset, groupColumns As Variant, pivotColu
   
   t.MoveFirst
   Do Until t.EOF
-    strName = CStr(t.Fields(pc(0)))
+    strName = CStr(t.Fields(pc(0)).Value)
     If strName <> prvCol Then ' minor saving if sorted
       ReDim Preserve cols(UBound(cols) + 1)
       cols(UBound(cols)) = strName
@@ -475,16 +545,25 @@ Function PivotRecordSet(r As ADODB.Recordset, groupColumns As Variant, pivotColu
     StatusChange c & " - " & strName & " " & InArray(pc, strName) & " FROM: " & Join(pc, ",")
     
     If Len(Trim(strName)) > 0 And FieldExists(x, strName) = False Then
-      '       InArray(pc, strName) = False And _
-       'strName <> valueColumn And _
-
       StatusChange "Adding field : " & strName
-      x.Fields.Append strName, valType, valSize, valAttributes
+      'x.Fields.Append strName, valType, valSize, valAttributes
       'special handling for data types with numeric scale & precision
+      'Select Case valType
+      '    Case adNumeric, adDecimal
+      '        x.Fields(x.Fields.Count - 1).Precision = valPrecision
+      '        x.Fields(x.Fields.Count - 1).NumericScale = valNumericScale
+      'End Select
+      
+      
       Select Case valType
-          Case adNumeric, adDecimal
-              x.Fields(x.Fields.Count - 1).Precision = valPrecision
-              x.Fields(x.Fields.Count - 1).NumericScale = valNumericScale
+      Case adVariant
+        x.Fields.Append strName, valType
+      Case adNumeric, adDecimal
+        x.Fields.Append strName, valType, valSize, valAttributes
+        x.Fields(x.Fields.Count - 1).Precision = valPrecision
+        x.Fields(x.Fields.Count - 1).NumericScale = valNumericScale
+      Case Else
+        x.Fields.Append strName, valType, valSize, valAttributes
       End Select
       
       ReDim Preserve uniqueValueColumns(i)
@@ -500,29 +579,52 @@ Function PivotRecordSet(r As ADODB.Recordset, groupColumns As Variant, pivotColu
   l = UBound(gc)
   u = UBound(pc)
   Dim strTmp As String
-  
+
+  'Dim bMark As Variant ' bookmark
+
+
   t.MoveFirst
   Do Until t.EOF
-    x.Filter = BuildRSFilter(gc, t.Fields)
-    'x.Fields("INFO") = BuildRSFilter(gc, t.Fields)
+    'strFilter = BuildRSFilter(gc, t.Fields)
+    'MsgBox strFilter
+    'x.Filter = adFilterNone
+    'x.Filter = "Company = '1'"
+    'x.Find strFilter, , adSearchForward, bMark
     
-    If x.RecordCount < 1 Then
+    ' x.Find, x.Filter don't work with adVariant columns
+    ' x.Seek and x.Index are not supported.
+    ' x.Filter = BuildRSFilter(gc, t.Fields)
+
+
+    strFilter = BuildRSFilter(gc, t.Fields)
+    If h.Exists(strFilter) = False Then
       x.AddNew
+      h.Add strFilter, x.RecordCount
+      
       i = 0
       While i <= l
         strName = gc(i)
-        x.Fields(strName) = t.Fields(strName)
+        x.Fields(strName).Value = t.Fields(strName).Value
         i = i + 1
       Wend
+    Else
+      x.Move (h.Item(strFilter) - x.AbsolutePosition)
     End If
+    
+    'If x.RecordCount < 1 Then
+    'End If
     
     i = 0
     While i <= u
-      strName = t.Fields(pc(i))
-      x.Fields(strName) = t.Fields(valueColumn)
+      strName = t.Fields(pc(i)).Value
+      x.Fields(strName).Value = t.Fields(valueColumn).Value
       i = i + 1
     Wend
     
+    'If x.RecordCount < 1 Then
+    '  x.MoveFirst
+    '  bMark = x.bookmark
+    'End If
     t.MoveNext
   Loop
   x.Filter = ""
@@ -651,7 +753,7 @@ Function DeleteFields(r As ADODB.Recordset, deleteColumns As Variant) As ADODB.R
   
 End Function
 
-Function GroupRecordSet(r As ADODB.Recordset, groupColumns As Variant, valueColumns As Variant, Optional actions As Variant, Optional options As GroupRecordSetOptionsEnum = 0) As ADODB.Recordset
+Function GroupRecordSet(ByVal r As ADODB.Recordset, groupColumns As Variant, valueColumns As Variant, Optional actions As Variant, Optional options As GroupRecordSetOptionsEnum = 0) As ADODB.Recordset
   ' groupColumns, valueColumns, actions are all assumed to be either a String or an array of strings
   
   ' if action is specified as "max" and there are more than one valueColumn then the "max" action will be used for all values
@@ -677,6 +779,7 @@ Function GroupRecordSet(r As ADODB.Recordset, groupColumns As Variant, valueColu
   Dim h As New HashTable
   
   Dim fld As Variant
+  
   
   Dim strFilter As String
   Dim prevFilter As String
@@ -864,13 +967,13 @@ Function GroupRecordSet(r As ADODB.Recordset, groupColumns As Variant, valueColu
       i = 0
       While i <= ubGroupColumns
         strName = gc(i)
-        s.Fields(strName) = t.Fields(strName)
+        s.Fields(strName).Value = t.Fields(strName).Value
         i = i + 1
       Wend
       i = 0
       While i <= u
         strName = vc(i)
-        s.Fields(strName) = t.Fields(strName)
+        s.Fields(strName).Value = t.Fields(strName).Value
         i = i + 1
       Wend
     Else
@@ -879,37 +982,43 @@ Function GroupRecordSet(r As ADODB.Recordset, groupColumns As Variant, valueColu
       While i <= u
         strName = vc(i)
         strAction = ac(i)
+        ' NOTE: somefield.value = someotherfield.value is extremly important once
+        '       adVariant columns are used.
+        '
+        'fldt = t.Fields(strName) ' not used YET
+        'flds = t.Fields(strName) ' not used YET
+        
         
         Select Case strAction
         Case ADT_ACTION_SUM
-          If IsNumeric(t.Fields(strName)) = True Then
-            If IsNumeric(s.Fields(strName)) = True Then
-              s.Fields(strName) = CDbl(s.Fields(strName)) + CDbl(t.Fields(strName))
+          If IsNumeric(t.Fields(strName).Value) = True Then
+            If IsNumeric(s.Fields(strName).Value) = True Then
+              s.Fields(strName).Value = CDbl(s.Fields(strName).Value) + CDbl(t.Fields(strName).Value)
             Else
-              s.Fields(strName) = CDbl(t.Fields(strName))
+              s.Fields(strName).Value = CDbl(t.Fields(strName).Value)
             End If
             
           End If
         Case ADT_ACTION_MIN
-          If IsNumeric(t.Fields(strName)) = True Then
-            If CDbl(t.Fields(strName)) <= CDbl(s.Fields(strName)) Then
-              s.Fields(strName) = CDbl(t.Fields(strName))
+          If IsNumeric(t.Fields(strName).Value) = True Then
+            If CDbl(t.Fields(strName).Value) <= CDbl(s.Fields(strName).Value) Then
+              s.Fields(strName).Value = CDbl(t.Fields(strName).Value)
             End If
           End If
         Case ADT_ACTION_MAX
-          If IsNumeric(t.Fields(strName)) = True Then
-            If CDbl(t.Fields(strName)) >= CDbl(s.Fields(strName)) Then
-              s.Fields(strName) = CDbl(t.Fields(strName))
+          If IsNumeric(t.Fields(strName).Value) = True Then
+            If CDbl(t.Fields(strName).Value) >= CDbl(s.Fields(strName).Value) Then
+              s.Fields(strName).Value = CDbl(t.Fields(strName).Value)
             End If
           End If
         Case ADT_ACTION_CONCATENATE
-          s.Fields(strName) = CStr(s.Fields(strName)) & CStr(t.Fields(strName))
+          s.Fields(strName).Value = CStr(s.Fields(strName).Value) & CStr(t.Fields(strName).Value)
         Case ADT_ACTION_JOIN_COMMA
-          s.Fields(strName) = CStr(s.Fields(strName)) & "," & CStr(t.Fields(strName))
+          s.Fields(strName).Value = CStr(s.Fields(strName).Value) & "," & CStr(t.Fields(strName).Value)
         Case ADT_ACTION_JOIN_HASH
-          s.Fields(strName) = CStr(s.Fields(strName)) & "#" & CStr(t.Fields(strName))
+          s.Fields(strName).Value = CStr(s.Fields(strName).Value) & "#" & CStr(t.Fields(strName).Value)
         Case ADT_ACTION_JOIN_CRLF
-          s.Fields(strName) = CStr(s.Fields(strName)) & vbCrLf & CStr(t.Fields(strName))
+          s.Fields(strName).Value = CStr(s.Fields(strName).Value) & vbCrLf & CStr(t.Fields(strName).Value)
         
         Case Else
           s.Fields(strName) = 0
@@ -1343,6 +1452,8 @@ End Function
 
 
 Function MergeRecordset(ParamArray param() As Variant) As ADODB.Recordset
+  'param can be a list of recordset, or just one. (one would but pointless though
+  
   Dim i As Long
   Dim l As Long
   Dim m As Long
@@ -1355,6 +1466,9 @@ Function MergeRecordset(ParamArray param() As Variant) As ADODB.Recordset
   Dim fsets() As Variant
   Dim flds As Fields
   Dim fld As Field
+  Dim fldName As String
+  Dim typeName As String
+  
   Dim f As Variant
   Dim col As Collection
   
@@ -1390,11 +1504,21 @@ Function MergeRecordset(ParamArray param() As Variant) As ADODB.Recordset
     ReDim tmpArray(0) As String
     Set flds = fsets(i)
     For Each f In flds
-      ReDim Preserve tmpArray(l) As String
-      tmpArray(l) = CStr(f.name)
+      fldName = f.name
       
-      If InCollection(col, f.name) = False Then
-        col.Add f, f.name
+      ReDim Preserve tmpArray(l) As String
+      tmpArray(l) = CStr(fldName)
+      
+      'If InCollection(col, fldName) = True Then
+      '  typeName = col.Item(fldName).Type
+      '
+      'End If
+      
+      If InCollection(col, fldName) = False Then
+        col.Add f, fldName
+        'MsgBox "Adding : " & fldName
+      Else
+        'MsgBox "NOT Adding : " & fldName
       End If
       l = l + 1
     Next
@@ -1403,19 +1527,23 @@ Function MergeRecordset(ParamArray param() As Variant) As ADODB.Recordset
   Wend
   
 
-  'strArray = MergeArrays(varArray) ' This Merges string arrays with ordering considered.
   
-
-  Set r = New Recordset
+  
+  'MsgBox Join(strArray, ", ")
+  Set r = New ADODB.Recordset
 
   i = 0
   While i <= UBound(strArray)
     Set fld = col(strArray(i))
-    r.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
     Select Case fld.Type
+      Case adVariant
+        r.Fields.Append fld.name, fld.Type
       Case adNumeric, adDecimal
+        r.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
         r.Fields(r.Fields.Count - 1).Precision = fld.Precision
         r.Fields(r.Fields.Count - 1).NumericScale = fld.NumericScale
+      Case Else
+        r.Fields.Append fld.name, fld.Type, fld.DefinedSize, fld.Attributes
     End Select
     i = i + 1
   Wend
@@ -1430,9 +1558,7 @@ Function MergeRecordset(ParamArray param() As Variant) As ADODB.Recordset
     Do Until t.EOF
       r.AddNew
       For Each f In t.Fields
-        'If FieldExists(r, fld.Name) = False Then
-        r.Fields(f.name) = t.Fields(f.name)
-        'End If
+        r.Fields(f.name).Value = t.Fields(f.name).Value ' You need to be very specific here about adding .value when using adVariant
       Next
       t.MoveNext
     Loop
