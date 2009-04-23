@@ -1,0 +1,15 @@
+
+Sub test()
+  Dim t As Table
+  Dim msg As String
+  Dim i As Integer
+  
+  
+  i = 1
+  For Each t In ActiveDocument.Tables
+    msg = msg & "Table " & i & " has " & t.Rows.Count & " rows." & vbCrLf
+    i = i + 1
+  Next
+  MsgBox msg
+
+End Sub
