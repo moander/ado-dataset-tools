@@ -1,0 +1,6 @@
+* Check out ADO 2.8 and ADOMD
+* TRy using Stream to get a web XML file and zap that to excel.
+  - see http://dotnetslackers.com/community/blogs/haissam/archive/2007/05/09/Using-ADO-2.8-To-Read-Intranet-Web.config.aspx
+  -
+  - http://www.google.com/finance/historical?histperiod=weekly&cid=694653&startdate=Apr+22%2C+2007&enddate=Apr+21%2C+2009&output=csv
+  - %2C is comma
