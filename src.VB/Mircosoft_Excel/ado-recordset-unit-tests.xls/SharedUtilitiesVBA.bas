@@ -1,8 +1,8 @@
-Attribute VB_Name = "SharedVBAModules"
+Attribute VB_Name = "SharedUtilitiesVBA"
 Option Explicit
 
 
-Sub ExportAllModules()
+Public Sub ExportAllModules()
   Dim s As Boolean
   s = ExportVBAModules("C:\Projects\ado-dataset-tools\src.VB\")
 

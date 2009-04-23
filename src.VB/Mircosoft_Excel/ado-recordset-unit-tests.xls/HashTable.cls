@@ -7,8 +7,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-' FROM http://www.bytemycode.com/snippets/snippet/251/
-' Lenny Grover - http://www.bytemycode.com/members/member/lgrover/
+' FROM http://www.devx.com/vb2themax/Tip/19307
+' Author: Francesco Balena
+
+
 Option Explicit
 
 Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Dest As Any, Source As Any, ByVal bytes As Long)

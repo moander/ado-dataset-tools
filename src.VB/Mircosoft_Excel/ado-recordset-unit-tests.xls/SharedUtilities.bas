@@ -27,7 +27,7 @@ Function Rpad(myString As String, padString As String, padLength As Long) As Str
   Rpad = Left$(myString & String(padLength, padString), padLength)
 End Function
 
-Function Lpad(myString As String, padString As String, padLength As Long) As String
+Function Lpad(ByVal myString As String, padString As String, padLength As Long) As String
   Dim l As Long
   l = Len(myString)
   If l > padLength Then
@@ -171,6 +171,47 @@ Function CStrArray(str As Variant) As String()
     strArray(0) = CStr(str)
     CStrArray = strArray
   End If
+
+End Function
+
+Function CVarFromStr(str As String, Optional datesAsUniversal As Boolean = False) As Variant
+  ' this needs to be moved to SharedUtilities at some stage
+  Dim val As Variant
+  
+  If IsNumeric(str) Then
+    If InStr(str, ".") > 0 Then
+      val = CDec(str)
+    Else
+      val = CLng(str)
+    End If
+  ElseIf IsDate(str) Then
+    val = CDate(str)
+    If datesAsUniversal Then
+      val = DateToUniversal(val)
+    End If
+  Else
+    'val = CVar(str)
+    val = str
+  End If
+  
+  CVarFromStr = val
+
+End Function
+
+Function CStrFromVar(var As Variant, Optional datesAsUniversal As Boolean = True) As String
+  Dim str As String
+  
+  If IsDate(var) Then
+    If datesAsUniversal Then
+      str = DateToUniversal(var)
+    Else
+      str = CStr(var)
+    End If
+  Else
+    str = CStr(var)
+  End If
+  
+  CStrFromVar = str
 
 End Function
 

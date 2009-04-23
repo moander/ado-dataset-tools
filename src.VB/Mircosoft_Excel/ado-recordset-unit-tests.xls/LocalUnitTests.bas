@@ -1,6 +1,8 @@
 Attribute VB_Name = "LocalUnitTests"
 Option Explicit
 
+' Need a unit test for > 655656 rows (or whatever it is in excel)
+
 ' This module tests the following functions
 
 ' CloneRecordset()
@@ -50,7 +52,7 @@ End Sub
 
 
 
-Sub Test_CloneRecordset_01()
+Private Sub Test_CloneRecordset_01()
    Dim sh As Worksheet
    Dim wb As Workbook
    Dim shName As String
@@ -62,7 +64,7 @@ Sub Test_CloneRecordset_01()
    Set wb = ActiveWorkbook
    shName = "CloneRecordSet TEST 01"
 
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"), adVarChar, VARCHAR_SIZE)
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"), adVarChar, VARCHAR_SIZE)
    Set rs2 = CloneRecordset(rs1)
 
    cBefore = rs1.RecordCount + rs2.RecordCount
@@ -77,11 +79,11 @@ Sub Test_CloneRecordset_01()
    
 
    'MsgBox "Records before/after MergeRecordst() " & cBefore & "/" & cAfter & " " & rs.RecordCount
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
 End Sub
 
 
-Sub Test_CloneRecordset_02()
+Private Sub Test_CloneRecordset_02()
    Dim sh As Worksheet
    Dim wb As Workbook
    Dim shName As String
@@ -95,7 +97,7 @@ Sub Test_CloneRecordset_02()
    Set wb = ActiveWorkbook
    shName = "CloneRecordSet TEST 02"
 
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"), adVariant)
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"), adVariant)
    Set rs2 = CloneRecordset(rs1)
 
    cBefore = rs1.RecordCount + rs2.RecordCount
@@ -108,11 +110,11 @@ Sub Test_CloneRecordset_02()
    
 
   'MsgBox "Records before/after MergeRecordst() " & cBefore & "/" & cAfter
-   Set sh = RecordSetToWorkSheet(rs2, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs2, wb, shName)
 End Sub
 
 
-Sub Test_MergeRecordset_01()
+Private Sub Test_MergeRecordset_01()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -120,27 +122,37 @@ Sub Test_MergeRecordset_01()
    Dim cBefore As Long
    Dim cAfter As Long
 
-   Dim rs, rs1, rs2, rs3, rs4 As Recordset
+   Dim rs As ADODB.Recordset
+   Dim rs1 As ADODB.Recordset
+   Dim rs2 As ADODB.Recordset
+   Dim rs3 As ADODB.Recordset
+   Dim rs4 As ADODB.Recordset
    
    Set wb = ActiveWorkbook
    shName = "MergeRecordSet TEST 01"
    
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"), adVarChar, VARCHAR_SIZE)
-   Set rs2 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q2"), adVarChar, VARCHAR_SIZE)
-   Set rs3 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q3"), adVarChar, VARCHAR_SIZE)
-   Set rs4 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q4"), adVarChar, VARCHAR_SIZE)
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"), adVarChar, VARCHAR_SIZE)
+   Set rs2 = WorkSheetToRecordset(wb.Worksheets("Actuals Q2"), adVarChar, VARCHAR_SIZE)
+   Set rs3 = WorkSheetToRecordset(wb.Worksheets("Actuals Q3"), adVarChar, VARCHAR_SIZE)
+   Set rs4 = WorkSheetToRecordset(wb.Worksheets("Actuals Q4"), adVarChar, VARCHAR_SIZE)
    cBefore = rs1.RecordCount + rs2.RecordCount + rs3.RecordCount + rs4.RecordCount
+   
+   
+   
    
    Set rs = MergeRecordset(rs1, rs2, rs3, rs4)
    cAfter = rs.RecordCount
    
+   Set rs1 = CloneRecordset(rs)
+   
+   
    'MsgBox "Records before/after MergeRecordst() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
-Sub Test_MergeRecordset_02()
+Private Sub Test_MergeRecordset_02()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -153,8 +165,8 @@ Sub Test_MergeRecordset_02()
    Set wb = ActiveWorkbook
    shName = "MergeRecordSet TEST 02"
 
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"))
-   Set rs2 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q2"))
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"))
+   Set rs2 = WorkSheetToRecordset(wb.Worksheets("Actuals Q2"))
    cBefore = rs1.RecordCount + rs2.RecordCount
    
    Set rs = MergeRecordset(rs1, rs2)
@@ -162,11 +174,11 @@ Sub Test_MergeRecordset_02()
    
    'MsgBox "Records before/after MergeRecordst() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
-Sub Test_MergeRecordset_03()
+Private Sub Test_MergeRecordset_03()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -180,8 +192,8 @@ Sub Test_MergeRecordset_03()
    shName = "MergeRecordSet TEST 03"
 
    
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"), adVariant)
-   Set rs2 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q2"), adVarChar, VARCHAR_SIZE)
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"), adVariant)
+   Set rs2 = WorkSheetToRecordset(wb.Worksheets("Actuals Q2"), adVarChar, VARCHAR_SIZE)
    cBefore = rs1.RecordCount + rs2.RecordCount
    
    
@@ -192,12 +204,12 @@ Sub Test_MergeRecordset_03()
    
    'MsgBox "Records before/after MergeRecordst() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
 
-Sub Test_GroupRecordset_01()
+Private Sub Test_GroupRecordset_01()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -210,10 +222,10 @@ Sub Test_GroupRecordset_01()
    Set wb = ActiveWorkbook
    shName = "GroupRecordSet TEST 01"
    
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"))
-   Set rs2 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q2"))
-   Set rs3 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q3"))
-   Set rs4 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q4"))
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"))
+   Set rs2 = WorkSheetToRecordset(wb.Worksheets("Actuals Q2"))
+   Set rs3 = WorkSheetToRecordset(wb.Worksheets("Actuals Q3"))
+   Set rs4 = WorkSheetToRecordset(wb.Worksheets("Actuals Q4"))
    Set rs = MergeRecordset(rs1, rs2, rs3, rs4)
    
    cBefore = rs1.RecordCount + rs2.RecordCount + rs3.RecordCount + rs4.RecordCount
@@ -223,11 +235,11 @@ Sub Test_GroupRecordset_01()
    
    'ErrorChange "Records before/after GroupRecordSet() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
-Sub Test_GroupRecordset_02()
+Private Sub Test_GroupRecordset_02()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -243,10 +255,10 @@ Sub Test_GroupRecordset_02()
    Set wb = ActiveWorkbook
    shName = "GroupRecordSet TEST 02"
    
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"))
-   Set rs2 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q2"))
-   Set rs3 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q3"))
-   Set rs4 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q4"))
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"))
+   Set rs2 = WorkSheetToRecordset(wb.Worksheets("Actuals Q2"))
+   Set rs3 = WorkSheetToRecordset(wb.Worksheets("Actuals Q3"))
+   Set rs4 = WorkSheetToRecordset(wb.Worksheets("Actuals Q4"))
    Set rs = MergeRecordset(rs1, rs2, rs3, rs4)
    
    cBefore = rs1.RecordCount + rs2.RecordCount + rs3.RecordCount + rs4.RecordCount
@@ -260,12 +272,12 @@ Sub Test_GroupRecordset_02()
    
    'ErrorChange "Records before/after GroupRecordSet() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
 
-Sub Test_GroupRecordset_03()
+Private Sub Test_GroupRecordset_03()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -281,10 +293,10 @@ Sub Test_GroupRecordset_03()
    Set wb = ActiveWorkbook
    shName = "GroupRecordSet TEST 03"
 
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"))
-   Set rs2 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q2"))
-   Set rs3 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q3"))
-   Set rs4 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q4"))
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"))
+   Set rs2 = WorkSheetToRecordset(wb.Worksheets("Actuals Q2"))
+   Set rs3 = WorkSheetToRecordset(wb.Worksheets("Actuals Q3"))
+   Set rs4 = WorkSheetToRecordset(wb.Worksheets("Actuals Q4"))
    Set rs = MergeRecordset(rs1, rs2, rs3, rs4)
    
    cBefore = rs1.RecordCount + rs2.RecordCount + rs3.RecordCount + rs4.RecordCount
@@ -298,11 +310,11 @@ Sub Test_GroupRecordset_03()
    
    'ErrorChange "Records before/after GroupRecordSet() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
-Sub Test_GroupRecordset_04()
+Private Sub Test_GroupRecordset_04()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -318,11 +330,11 @@ Sub Test_GroupRecordset_04()
    Set wb = ActiveWorkbook
    shName = "GroupRecordSet TEST 04"
    
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"))
-   Set rs2 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q2"))
-   Set rs3 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q3"))
-   Set rs4 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q4"))
-   Set rs5 = WorkSheetToRecordSet(wb.Worksheets("Budgets"))
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"))
+   Set rs2 = WorkSheetToRecordset(wb.Worksheets("Actuals Q2"))
+   Set rs3 = WorkSheetToRecordset(wb.Worksheets("Actuals Q3"))
+   Set rs4 = WorkSheetToRecordset(wb.Worksheets("Actuals Q4"))
+   Set rs5 = WorkSheetToRecordset(wb.Worksheets("Budgets"))
    Set rs = MergeRecordset(rs1, rs2, rs3, rs4, rs5)
    
    cBefore = rs1.RecordCount + rs2.RecordCount + rs3.RecordCount + rs4.RecordCount + rs5.RecordCount
@@ -338,12 +350,12 @@ Sub Test_GroupRecordset_04()
    
    'ErrorChange "Records before/after GroupRecordSet() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
 
-Sub Test_PivotRecordset_01()
+Private Sub Test_PivotRecordset_01()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -356,7 +368,7 @@ Sub Test_PivotRecordset_01()
    Set wb = ActiveWorkbook
    shName = "PivotRecordSet TEST 01"
    
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"), adVarChar, 1200)
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"), adVarChar, 1200)
    
    cBefore = rs1.RecordCount
    
@@ -365,12 +377,12 @@ Sub Test_PivotRecordset_01()
    
    'ErrorChange "Records before/after GroupRecordSet() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
 
 
-Sub Test_PivotRecordset_02()
+Private Sub Test_PivotRecordset_02()
    
    Dim sh As Worksheet
    Dim wb As Workbook
@@ -383,7 +395,7 @@ Sub Test_PivotRecordset_02()
    Set wb = ActiveWorkbook
    shName = "PivotRecordSet TEST 02"
    
-   Set rs1 = WorkSheetToRecordSet(wb.Worksheets("Actuals Q1"))
+   Set rs1 = WorkSheetToRecordset(wb.Worksheets("Actuals Q1"))
    
    cBefore = rs1.RecordCount
    
@@ -392,6 +404,6 @@ Sub Test_PivotRecordset_02()
    
    'ErrorChange "Records before/after GroupRecordSet() " & cBefore & "/" & cAfter
    
-   Set sh = RecordSetToWorkSheet(rs, wb, shName)
+   Set sh = RecordsetToWorkSheet(rs, wb, shName)
    
 End Sub
