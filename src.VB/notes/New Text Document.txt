@@ -4,3 +4,15 @@
   -
   - http://www.google.com/finance/historical?histperiod=weekly&cid=694653&startdate=Apr+22%2C+2007&enddate=Apr+21%2C+2009&output=csv
   - %2C is comma
+
+
+Also note when creating data in excel (via COM or POI) using an array of the row is probably a lot more efficient than
+creating one cell at a time.
+
+HashTable.Exists() has subscript out of range errors when dealing with “fancy quotes” quotes. Found in GroupRecordset. Could be some sort of unicode issue.
+
+    If h.Exists(strFilter) = False Then
+      h.Add strFilter, h.Count + 1
+    End If
+    
+   
